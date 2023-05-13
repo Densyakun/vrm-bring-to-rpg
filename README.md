@@ -6,6 +6,7 @@ Templates for games that can bring in VRM files.
 - Starter Assets - Third Person Character Controller 1.1.4
 - UniVRM v0.110.0
 - ニコニ立体ちゃん version 1
+- 07 AkazukinPOP（07あかずきんポップ）
 
 Project Settings:
 
