@@ -2,11 +2,13 @@
 
 Templates for games that can bring in VRM files.
 
-- Unity 2021.3.25f1
-- Starter Assets - Third Person Character Controller 1.1.4
-- UniVRM v0.110.0
-- ニコニ立体ちゃん version 1
-- 07 AkazukinPOP（07あかずきんポップ）
+- Game engine: Unity 2021.3.25f1
+- Unity packages:
+  - Starter Assets - Third Person Character Controller 1.1.4
+  - UniVRM v0.110.0
+- VRM: ニコニ立体ちゃん version 1
+- Language: Japanese (日本語)
+- Fonts: 07 AkazukinPOP（07あかずきんポップ）
 
 Project Settings:
 

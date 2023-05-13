@@ -1,7 +1,7 @@
 Font: 07AkazukinPop  Style: Heavy
 Point Size: 45   SP/PD Ratio: 20.0%
 
-Characters included: 0/0
+Characters included: 7/7
 Missing characters: 0
 Excluded characters: 0
 
