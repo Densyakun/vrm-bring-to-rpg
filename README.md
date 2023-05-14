@@ -6,6 +6,7 @@ Templates for games that can bring in VRM files.
 - Unity packages:
   - Starter Assets - Third Person Character Controller 1.1.4
   - UniVRM v0.110.0
+  - Mirror 78.3.0
 - VRM: ニコニ立体ちゃん version 1
 - Language: Japanese (日本語)
 - Fonts: 07 AkazukinPOP（07あかずきんポップ）
