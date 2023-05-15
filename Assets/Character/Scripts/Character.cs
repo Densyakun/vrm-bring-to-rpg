@@ -30,7 +30,8 @@ public class Character : NetworkBehaviour
     [Command]
     void CmdSetCharacterName(string characterName)
     {
-        if (isServerOnly) SetCharacterName("", this.characterName = characterName);
+        this.characterName = characterName;
+        if (isServerOnly) SetCharacterName("", characterName);
     }
 
     void SetCharacterName(string oldCharacterName, string newCharacterName)
