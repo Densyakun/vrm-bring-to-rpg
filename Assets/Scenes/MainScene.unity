@@ -195,6 +195,7 @@ MonoBehaviour:
     deliveryTimeEmaDuration: 2
   timeInterpolationGui: 0
   titleHUD: {fileID: 1770488631}
+  characterNameInput: {fileID: 483547595}
 --- !u!4 &44139052
 Transform:
   m_ObjectHideFlags: 0

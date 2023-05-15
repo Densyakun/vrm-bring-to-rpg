@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Mirror;
@@ -12,6 +13,7 @@ public class NewNetworkManager : NetworkManager
 {
     [Header("UI")]
     public GameObject titleHUD;
+    public TMP_InputField characterNameInput;
 
     // Overrides the base singleton so we don't
     // have to cast to this type everywhere.
