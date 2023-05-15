@@ -2469,7 +2469,10 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  characterName: 
   playerCameraRoot: {fileID: 3752692518121871573}
+  characterNameTextPrefab: {fileID: 4375928637741010933, guid: 4b46e1f0f7b26e0459aa6dd0f86b2f82, type: 3}
+  characterNameText: {fileID: 0}
 --- !u!1 &8930100121118669658
 GameObject:
   m_ObjectHideFlags: 0
