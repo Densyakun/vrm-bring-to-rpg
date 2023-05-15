@@ -8,7 +8,7 @@ public class CharacterNameText : MonoBehaviour
     [SerializeField]
     private TMP_Text text;
 
-    public Character character;
+    private Character character;
     private RectTransform overlayCanvasTransform;
 
     void Start()

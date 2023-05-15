@@ -4,21 +4,22 @@ using Cinemachine;
 
 public class Character : NetworkBehaviour
 {
-    [SyncVar(hook = nameof(SetCharacterName))]
-    public string characterName;
     public Transform playerCameraRoot;
     public CharacterNameText characterNameTextPrefab;
+
+    [SyncVar(hook = nameof(SetCharacterName))]
+    public string characterName;
     public CharacterNameText characterNameText;
 
     public override void OnStartClient()
     {
-        if (isLocalPlayer) {
-            CmdSetCharacterName(NewNetworkManager.singleton.characterNameInput.text);
+        if (!isLocalPlayer) return;
 
-            GameObject playerFollowCamera = GameObject.FindWithTag("PlayerFollowCamera");
-            CinemachineVirtualCamera cinemachineVirtualCamera = playerFollowCamera.GetComponent<CinemachineVirtualCamera>();
-            cinemachineVirtualCamera.Follow = playerCameraRoot;
-        }
+        CmdSetCharacterName(NewNetworkManager.singleton.characterNameInput.text);
+
+        GameObject playerFollowCamera = GameObject.FindWithTag("PlayerFollowCamera");
+        CinemachineVirtualCamera cinemachineVirtualCamera = playerFollowCamera.GetComponent<CinemachineVirtualCamera>();
+        cinemachineVirtualCamera.Follow = playerCameraRoot;
     }
 
     void OnDestroy()
@@ -27,11 +28,13 @@ public class Character : NetworkBehaviour
     }
 
     [Command]
-    void CmdSetCharacterName(string characterName) {
+    void CmdSetCharacterName(string characterName)
+    {
         if (isServerOnly) SetCharacterName("", this.characterName = characterName);
     }
 
-    void SetCharacterName(string oldCharacterName, string newCharacterName) {
+    void SetCharacterName(string oldCharacterName, string newCharacterName)
+    {
         GameObject overlayCanvasObject = GameObject.FindWithTag("OverlayCanvas");
         characterNameText = Instantiate(characterNameTextPrefab, overlayCanvasObject.transform);
         characterNameText.setCharacter(this);

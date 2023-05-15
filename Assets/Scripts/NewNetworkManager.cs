@@ -225,14 +225,16 @@ public class NewNetworkManager : NetworkManager
     /// This is invoked when a server is started - including when a host is started.
     /// <para>StartServer has multiple signatures, but they all cause this hook to be called.</para>
     /// </summary>
-    public override void OnStartServer() {
+    public override void OnStartServer()
+    {
         titleHUD.SetActive(false);
     }
 
     /// <summary>
     /// This is invoked when the client is started.
     /// </summary>
-    public override void OnStartClient() {
+    public override void OnStartClient()
+    {
         titleHUD.SetActive(false);
     }
 
@@ -244,14 +246,16 @@ public class NewNetworkManager : NetworkManager
     /// <summary>
     /// This is called when a server is stopped - including when a host is stopped.
     /// </summary>
-    public override void OnStopServer() {
+    public override void OnStopServer()
+    {
         titleHUD.SetActive(true);
     }
 
     /// <summary>
     /// This is called when a client is stopped.
     /// </summary>
-    public override void OnStopClient() {
+    public override void OnStopClient()
+    {
         if (!NetworkServer.active) titleHUD.SetActive(true);
     }
 
