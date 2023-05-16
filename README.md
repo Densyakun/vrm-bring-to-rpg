@@ -18,3 +18,8 @@ Project Settings:
 ## Ground layer
 
 A Ground layer is assigned to the ground object that the player can jump to.
+
+## Download caches
+
+The character's VRM file is saved in `Application.persistentDataPath/vrm-cache/`.
+`Application.persistentDataPath` varies by platform. See [here](https://docs.unity3d.com/ja/2021.3/ScriptReference/Application-persistentDataPath.html) for details.
