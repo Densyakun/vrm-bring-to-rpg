@@ -9,6 +9,8 @@ using Cinemachine;
 
 public class Character : NetworkBehaviour
 {
+    public static ulong MAX_BYTES = 31457280; // 30 MiB
+
     public Transform playerCameraRoot;
     public CharacterNameText characterNameTextPrefab;
     public GameObject vrmCharacterParent;
@@ -77,15 +79,50 @@ public class Character : NetworkBehaviour
 
         string path = Path.Combine(directoryPath, string.Concat(url.Split(Path.GetInvalidFileNameChars())));
 
-        if (!File.Exists(path))
+        if (File.Exists(path))
         {
-            UnityWebRequest uwr = new UnityWebRequest(url, UnityWebRequest.kHttpVerbGET);
-            uwr.downloadHandler = new DownloadHandlerFile(path);
-            yield return uwr.SendWebRequest();
-            if (uwr.result == UnityWebRequest.Result.ConnectionError || uwr.result == UnityWebRequest.Result.ProtocolError)
+            LoadModel(path);
+            yield break;
+        }
+
+        UnityWebRequest request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbGET);
+        request.downloadHandler = new DownloadHandlerFile(path);
+        var async = request.SendWebRequest();
+
+        while (true)
+        {
+            if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
             {
-                Debug.LogError(uwr.error);
+                Debug.LogError(request.error);
                 yield break;
+            }
+
+            if (async.isDone) break;
+
+            yield return null;
+
+            ulong size = 0;
+            var header = request.GetResponseHeader("Content-Length");
+            if (header != null)
+            {
+                ulong.TryParse(header, out size);
+
+                if (MAX_BYTES < size)
+                {
+                    request.Abort();
+                    yield break;
+                }
+                else
+                {
+                    yield return async;
+                    break;
+                }
+            }
+
+            if (MAX_BYTES < request.downloadedBytes)
+            {
+                request.Abort();
+                break;
             }
         }
 
