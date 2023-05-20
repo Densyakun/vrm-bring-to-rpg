@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using Mirror;
@@ -7,10 +9,6 @@ using Mirror.Authenticators;
 
 public class NewNetworkAuthenticator : NetworkAuthenticator
 {
-    [Header("Server Credentials")]
-    public string serverUsername;
-    public string serverPassword;
-
     [Header("UI")]
     public TMP_InputField usernameInput;
     public TMP_InputField passwordInput;
@@ -18,6 +16,41 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     readonly HashSet<NetworkConnection> connectionsPendingDisconnect = new HashSet<NetworkConnection>();
 
     #region Server
+
+    [Serializable]
+    public struct PlayerData
+    {
+        public string username;
+        public string password;
+    }
+
+    public struct PlayersData
+    {
+        public List<PlayerData> playersData;
+    }
+
+    private List<PlayerData> playersData;
+
+    void LoadPlayersData()
+    {
+        string playersDataJsonPath = Path.Combine(Application.persistentDataPath, "server/players.json");
+        if (!File.Exists(playersDataJsonPath))
+            playersData = new List<PlayerData>();
+        else
+        {
+            string json = File.ReadAllText(playersDataJsonPath);
+            playersData = JsonUtility.FromJson<PlayersData>(json).playersData;
+        }
+    }
+
+    void SavePlayersData()
+    {
+        string directoryPath = Path.Combine(Application.persistentDataPath, "server/");
+        string playersDataJsonPath = Path.Combine(directoryPath, "players.json");
+        string json = JsonUtility.ToJson(new PlayersData { playersData = playersData });
+        Directory.CreateDirectory(directoryPath);
+        File.WriteAllText(playersDataJsonPath, json);
+    }
 
     /// <summary>
     /// Called on server from StartServer to initialize the Authenticator
@@ -27,6 +60,8 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     {
         // register a handler for the authentication request we expect from client
         NetworkServer.RegisterHandler<BasicAuthenticator.AuthRequestMessage>(OnAuthRequestMessage, false);
+
+        LoadPlayersData();
     }
 
     /// <summary>
@@ -48,8 +83,37 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     {
         if (connectionsPendingDisconnect.Contains(conn)) return;
 
-        // check the credentials by calling your web server, database table, playfab api, or any method appropriate.
-        if (msg.authUsername == serverUsername && msg.authPassword == serverPassword)
+        // check the credentials
+        bool isAuthenticated = false;
+        if (!string.IsNullOrWhiteSpace(msg.authUsername) &&
+            !string.IsNullOrEmpty(msg.authPassword))
+        {
+            bool createAccount = true;
+            for (int i = 0; i < playersData.Count; i++)
+                if (msg.authUsername == playersData[i].username)
+                {
+                    createAccount = false;
+
+                    if (msg.authPassword == playersData[i].password)
+                        isAuthenticated = true;
+
+                    break;
+                }
+
+            // Create an account when logged in with a non-existent user name
+            if (createAccount)
+            {
+                isAuthenticated = true;
+                playersData.Add(new PlayerData
+                {
+                    username = msg.authUsername,
+                    password = msg.authPassword,
+                });
+                SavePlayersData();
+            }
+        }
+
+        if (isAuthenticated)
         {
             conn.authenticationData = msg.authUsername;
 
