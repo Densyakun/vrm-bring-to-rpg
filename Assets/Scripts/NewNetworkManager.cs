@@ -13,7 +13,6 @@ public class NewNetworkManager : NetworkManager
 {
     [Header("UI")]
     public GameObject titleHUD;
-    public TMP_InputField characterNameInput;
     public TMP_InputField vrmFileURLInput;
 
     // Overrides the base singleton so we don't

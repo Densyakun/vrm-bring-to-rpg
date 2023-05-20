@@ -22,14 +22,17 @@ public class Character : NetworkBehaviour
     public string vrmFileURL;
     private RuntimeGltfInstance vrmCharacterInstance;
 
+    public override void OnStartServer()
+    {
+        this.characterName = (string)connectionToClient.authenticationData;
+        if (isServerOnly) SetCharacterName("", characterName);
+    }
+
     public override void OnStartClient()
     {
         if (!isLocalPlayer) return;
 
-        CmdSetPlayerData(
-            NewNetworkManager.singleton.characterNameInput.text,
-            NewNetworkManager.singleton.vrmFileURLInput.text
-        );
+        CmdSetVRMFileURL(NewNetworkManager.singleton.vrmFileURLInput.text);
 
         GameObject playerFollowCamera = GameObject.FindWithTag("PlayerFollowCamera");
         CinemachineVirtualCamera cinemachineVirtualCamera = playerFollowCamera.GetComponent<CinemachineVirtualCamera>();
@@ -50,15 +53,10 @@ public class Character : NetworkBehaviour
     }
 
     [Command]
-    void CmdSetPlayerData(string characterName, string vrmFileURL)
+    void CmdSetVRMFileURL(string vrmFileURL)
     {
-        this.characterName = characterName;
         this.vrmFileURL = vrmFileURL;
-
-        if (!isServerOnly) return;
-
-        SetCharacterName("", characterName);
-        SetVRMFileURL("", vrmFileURL);
+        if (isServerOnly) SetVRMFileURL("", vrmFileURL);
     }
 
     void SetCharacterName(string oldCharacterName, string newCharacterName)
