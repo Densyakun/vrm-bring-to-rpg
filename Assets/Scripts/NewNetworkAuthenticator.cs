@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using Mirror;
@@ -88,13 +90,19 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
         if (!string.IsNullOrWhiteSpace(msg.authUsername) &&
             !string.IsNullOrEmpty(msg.authPassword))
         {
+            var encoder = new UTF8Encoding();
+            var buffer = encoder.GetBytes(msg.authPassword);
+            SHA512 shaM = new SHA512Managed();
+            var hash = shaM.ComputeHash(buffer);
+            string password = Convert.ToBase64String(hash);
+
             bool createAccount = true;
             for (int i = 0; i < playersData.Count; i++)
                 if (msg.authUsername == playersData[i].username)
                 {
                     createAccount = false;
 
-                    if (msg.authPassword == playersData[i].password)
+                    if (password == playersData[i].password)
                         isAuthenticated = true;
 
                     break;
@@ -107,7 +115,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
                 playersData.Add(new PlayerData
                 {
                     username = msg.authUsername,
-                    password = msg.authPassword,
+                    password = password,
                 });
                 SavePlayersData();
             }
