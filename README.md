@@ -23,3 +23,9 @@ A Ground layer is assigned to the ground object that the player can jump to.
 
 The character's VRM file is saved in `Application.persistentDataPath/vrm-cache/`.
 `Application.persistentDataPath` varies by platform. See [here](https://docs.unity3d.com/ja/2021.3/ScriptReference/Application-persistentDataPath.html) for details.
+
+## Password encryption
+
+Assets/Scripts/NewNetworkAuthenticator.cs encrypts user account passwords with SHA512 and PBKDF2.
+
+It is recommended that the PBKDF2_ITERATION constant be set to a random value of 10,000 or greater.

@@ -24,11 +24,34 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     {
         public string username;
         public string password;
+        public string salt;
     }
 
     public struct PlayersData
     {
         public List<PlayerData> playersData;
+    }
+
+    const int SALT_SIZE = 16;
+    const int PBKDF2_ITERATION = 10000;
+
+    public static byte[] GenerateSalt()
+    {
+        var buff = new byte[SALT_SIZE];
+        using (var rng = new RNGCryptoServiceProvider())
+        {
+            rng.GetBytes(buff);
+        }
+        return buff;
+    }
+
+    public static string GeneratePasswordHashPBKDF2(string pwd, byte[] salt)
+    {
+        var result = "";
+        var b = new Rfc2898DeriveBytes(pwd, salt, PBKDF2_ITERATION);
+        var k = b.GetBytes(32);
+        result = Convert.ToBase64String(k);
+        return result;
     }
 
     private List<PlayerData> playersData;
@@ -102,7 +125,10 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
                 {
                     createAccount = false;
 
-                    if (password == playersData[i].password)
+                    var salt = Convert.FromBase64String(playersData[i].salt);
+                    var hash2 = GeneratePasswordHashPBKDF2(password, salt);
+
+                    if (hash2 == playersData[i].password)
                         isAuthenticated = true;
 
                     break;
@@ -111,11 +137,15 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
             // Create an account when logged in with a non-existent user name
             if (createAccount)
             {
+                var salt = GenerateSalt();
+                var hash2 = GeneratePasswordHashPBKDF2(password, salt);
+
                 isAuthenticated = true;
                 playersData.Add(new PlayerData
                 {
                     username = msg.authUsername,
-                    password = password,
+                    password = hash2,
+                    salt = Convert.ToBase64String(salt),
                 });
                 SavePlayersData();
             }
