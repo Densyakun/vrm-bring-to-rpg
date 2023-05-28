@@ -26,6 +26,6 @@ The character's VRM file is saved in `Application.persistentDataPath/vrm-cache/`
 
 ## Password encryption
 
-Assets/Scripts/NewNetworkAuthenticator.cs encrypts user account passwords with SHA512 and PBKDF2.
+Assets/Scripts/NewNetworkAuthenticator.cs encrypts user account passwords with PBKDF2.
 
 It is recommended that the PBKDF2_ITERATION constant be set to a random value of 10,000 or greater.

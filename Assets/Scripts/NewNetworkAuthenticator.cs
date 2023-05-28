@@ -113,12 +113,6 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
         if (!string.IsNullOrWhiteSpace(msg.authUsername) &&
             !string.IsNullOrEmpty(msg.authPassword))
         {
-            var encoder = new UTF8Encoding();
-            var buffer = encoder.GetBytes(msg.authPassword);
-            SHA512 shaM = new SHA512Managed();
-            var hash = shaM.ComputeHash(buffer);
-            string password = Convert.ToBase64String(hash);
-
             bool createAccount = true;
             for (int i = 0; i < playersData.Count; i++)
                 if (msg.authUsername == playersData[i].username)
@@ -126,9 +120,9 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
                     createAccount = false;
 
                     var salt = Convert.FromBase64String(playersData[i].salt);
-                    var hash2 = GeneratePasswordHashPBKDF2(password, salt);
+                    var hash = GeneratePasswordHashPBKDF2(msg.authPassword, salt);
 
-                    if (hash2 == playersData[i].password)
+                    if (hash == playersData[i].password)
                         isAuthenticated = true;
 
                     break;
@@ -138,13 +132,13 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
             if (createAccount)
             {
                 var salt = GenerateSalt();
-                var hash2 = GeneratePasswordHashPBKDF2(password, salt);
+                var hash = GeneratePasswordHashPBKDF2(msg.authPassword, salt);
 
                 isAuthenticated = true;
                 playersData.Add(new PlayerData
                 {
                     username = msg.authUsername,
-                    password = hash2,
+                    password = hash,
                     salt = Convert.ToBase64String(salt),
                 });
                 SavePlayersData();
