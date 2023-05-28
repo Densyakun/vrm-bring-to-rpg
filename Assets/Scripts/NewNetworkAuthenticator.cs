@@ -14,6 +14,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     [Header("UI")]
     public TMP_InputField usernameInput;
     public TMP_InputField passwordInput;
+    public TMP_Text resultText;
 
     readonly HashSet<NetworkConnection> connectionsPendingDisconnect = new HashSet<NetworkConnection>();
 
@@ -207,6 +208,8 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     {
         // register a handler for the authentication response we expect from server
         NetworkClient.RegisterHandler<BasicAuthenticator.AuthResponseMessage>(OnAuthResponseMessage, false);
+
+        resultText.text = "";
     }
 
     /// <summary>
@@ -250,6 +253,8 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
 
             // Authentication has been rejected
             ClientReject();
+
+            resultText.text = "パスワードが間違っています";
         }
     }
 
