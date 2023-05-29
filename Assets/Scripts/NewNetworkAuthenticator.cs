@@ -7,7 +7,6 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using Mirror;
-using Mirror.Authenticators;
 
 public class NewNetworkAuthenticator : NetworkAuthenticator
 {
@@ -17,6 +16,25 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     public TMP_Text resultText;
 
     readonly HashSet<NetworkConnection> connectionsPendingDisconnect = new HashSet<NetworkConnection>();
+
+    private readonly Dictionary<NetworkConnection, RSAParameters> privateKeys = new Dictionary<NetworkConnection, RSAParameters>();
+
+    #region Messages
+
+    public struct AuthRequestMessage : NetworkMessage
+    {
+        public string authUsername;
+        public byte[] authPassword;
+    }
+
+    public struct AuthResponseMessage : NetworkMessage
+    {
+        public byte code;
+        public string message;
+        public RSAParameters publicKey;
+    }
+
+    #endregion
 
     #region Server
 
@@ -85,7 +103,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     public override void OnStartServer()
     {
         // register a handler for the authentication request we expect from client
-        NetworkServer.RegisterHandler<BasicAuthenticator.AuthRequestMessage>(OnAuthRequestMessage, false);
+        NetworkServer.RegisterHandler<AuthRequestMessage>(OnAuthRequestMessage, false);
 
         LoadPlayersData();
     }
@@ -97,7 +115,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     public override void OnStopServer()
     {
         // unregister the handler for the authentication request
-        NetworkServer.UnregisterHandler<BasicAuthenticator.AuthRequestMessage>();
+        NetworkServer.UnregisterHandler<AuthRequestMessage>();
     }
 
     /// <summary>
@@ -105,15 +123,52 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     /// </summary>
     /// <param name="conn">Connection to client.</param>
     /// <param name="msg">The message payload</param>
-    public void OnAuthRequestMessage(NetworkConnectionToClient conn, BasicAuthenticator.AuthRequestMessage msg)
+    public void OnAuthRequestMessage(NetworkConnectionToClient conn, AuthRequestMessage msg)
     {
         if (connectionsPendingDisconnect.Contains(conn)) return;
 
-        // check the credentials
-        bool isAuthenticated = false;
-        if (!string.IsNullOrWhiteSpace(msg.authUsername) &&
-            !string.IsNullOrEmpty(msg.authPassword))
+        // Create public and private keys and send the public key to the client
+        if (string.IsNullOrEmpty(msg.authUsername))
         {
+            try
+            {
+                using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+                {
+                    RSAParameters publicKey = RSA.ExportParameters(false);
+                    privateKeys[conn] = RSA.ExportParameters(true);
+
+                    AuthResponseMessage authResponseMessage = new AuthResponseMessage
+                    {
+                        code = 150,
+                        publicKey = publicKey
+                    };
+
+                    conn.Send(authResponseMessage);
+                }
+            }
+            catch (CryptographicException e)
+            {
+                Debug.LogException(e);
+            }
+            return;
+        }
+
+        // check the credentials
+        if (!privateKeys.ContainsKey(conn)) return;
+
+        bool isAuthenticated = false;
+
+        try
+        {
+            UnicodeEncoding ByteConverter = new UnicodeEncoding();
+
+            string decryptedPassword;
+
+            using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+            {
+                decryptedPassword = ByteConverter.GetString(RSADecrypt(msg.authPassword, privateKeys[conn], false));
+            }
+
             bool createAccount = true;
             for (int i = 0; i < playersData.Count; i++)
                 if (msg.authUsername == playersData[i].username)
@@ -121,7 +176,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
                     createAccount = false;
 
                     var salt = Convert.FromBase64String(playersData[i].salt);
-                    var hash = GeneratePasswordHashPBKDF2(msg.authPassword, salt);
+                    var hash = GeneratePasswordHashPBKDF2(decryptedPassword, salt);
 
                     if (hash == playersData[i].password)
                         isAuthenticated = true;
@@ -133,7 +188,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
             if (createAccount)
             {
                 var salt = GenerateSalt();
-                var hash = GeneratePasswordHashPBKDF2(msg.authPassword, salt);
+                var hash = GeneratePasswordHashPBKDF2(decryptedPassword, salt);
 
                 isAuthenticated = true;
                 playersData.Add(new PlayerData
@@ -145,13 +200,17 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
                 SavePlayersData();
             }
         }
+        catch (ArgumentNullException e)
+        {
+            Debug.LogException(e);
+        }
 
         if (isAuthenticated)
         {
             conn.authenticationData = msg.authUsername;
 
             // create and send msg to client so it knows to proceed
-            BasicAuthenticator.AuthResponseMessage authResponseMessage = new BasicAuthenticator.AuthResponseMessage
+            AuthResponseMessage authResponseMessage = new AuthResponseMessage
             {
                 code = 100,
                 message = "Success"
@@ -167,7 +226,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
             connectionsPendingDisconnect.Add(conn);
 
             // create and send msg to client so it knows to disconnect
-            BasicAuthenticator.AuthResponseMessage authResponseMessage = new BasicAuthenticator.AuthResponseMessage
+            AuthResponseMessage authResponseMessage = new AuthResponseMessage
             {
                 code = 200,
                 message = "Invalid Credentials"
@@ -207,7 +266,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     public override void OnStartClient()
     {
         // register a handler for the authentication response we expect from server
-        NetworkClient.RegisterHandler<BasicAuthenticator.AuthResponseMessage>(OnAuthResponseMessage, false);
+        NetworkClient.RegisterHandler<AuthResponseMessage>(OnAuthResponseMessage, false);
 
         resultText.text = "";
     }
@@ -219,7 +278,7 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     public override void OnStopClient()
     {
         // unregister the handler for the authentication response
-        NetworkClient.UnregisterHandler<BasicAuthenticator.AuthResponseMessage>();
+        NetworkClient.UnregisterHandler<AuthResponseMessage>();
     }
 
     /// <summary>
@@ -227,22 +286,43 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     /// </summary>
     public override void OnClientAuthenticate()
     {
-        BasicAuthenticator.AuthRequestMessage authRequestMessage = new BasicAuthenticator.AuthRequestMessage
-        {
-            authUsername = usernameInput.text,
-            authPassword = passwordInput.text
-        };
-
-        NetworkClient.Send(authRequestMessage);
+        // Request public key from server
+        NetworkClient.Send(new AuthRequestMessage());
     }
 
     /// <summary>
     /// Called on client when the server's AuthResponseMessage arrives
     /// </summary>
     /// <param name="msg">The message payload</param>
-    public void OnAuthResponseMessage(BasicAuthenticator.AuthResponseMessage msg)
+    public void OnAuthResponseMessage(AuthResponseMessage msg)
     {
-        if (msg.code == 100)
+        if (msg.code == 150)
+        {
+            try
+            {
+                UnicodeEncoding ByteConverter = new UnicodeEncoding();
+
+                byte[] encryptedPassword;
+
+                using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+                {
+                    encryptedPassword = RSAEncrypt(ByteConverter.GetBytes(passwordInput.text), msg.publicKey, false);
+                }
+
+                AuthRequestMessage authRequestMessage = new AuthRequestMessage
+                {
+                    authUsername = usernameInput.text,
+                    authPassword = encryptedPassword
+                };
+
+                NetworkClient.Send(authRequestMessage);
+            }
+            catch (ArgumentNullException e)
+            {
+                Debug.LogException(e);
+            }
+        }
+        else if (msg.code == 100)
         {
             // Authentication has been accepted
             ClientAccept();
@@ -259,4 +339,61 @@ public class NewNetworkAuthenticator : NetworkAuthenticator
     }
 
     #endregion
+
+    public static byte[] RSAEncrypt(byte[] DataToEncrypt, RSAParameters RSAKeyInfo, bool DoOAEPPadding)
+    {
+        try
+        {
+            byte[] encryptedData;
+            //Create a new instance of RSACryptoServiceProvider.
+            using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+            {
+
+                //Import the RSA Key information. This only needs
+                //toinclude the public key information.
+                RSA.ImportParameters(RSAKeyInfo);
+
+                //Encrypt the passed byte array and specify OAEP padding.  
+                //OAEP padding is only available on Microsoft Windows XP or
+                //later.  
+                encryptedData = RSA.Encrypt(DataToEncrypt, DoOAEPPadding);
+            }
+            return encryptedData;
+        }
+        //Catch and display a CryptographicException  
+        //to the console.
+        catch (CryptographicException e)
+        {
+            Debug.LogException(e);
+
+            return null;
+        }
+    }
+
+    public static byte[] RSADecrypt(byte[] DataToDecrypt, RSAParameters RSAKeyInfo, bool DoOAEPPadding)
+    {
+        try
+        {
+            byte[] decryptedData;
+            //Create a new instance of RSACryptoServiceProvider.
+            using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+            {
+                //Import the RSA Key information. This needs
+                //to include the private key information.
+                RSA.ImportParameters(RSAKeyInfo);
+
+                //Decrypt the passed byte array and specify OAEP padding.  
+                //OAEP padding is only available on Microsoft Windows XP or
+                //later.  
+                decryptedData = RSA.Decrypt(DataToDecrypt, DoOAEPPadding);
+            }
+            return decryptedData;
+        }
+        catch (CryptographicException e)
+        {
+            Debug.LogException(e);
+
+            return null;
+        }
+    }
 }
